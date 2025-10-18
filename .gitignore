@@ -1,0 +1,32 @@
+# 🧱 Node modules (thư viện cài đặt)
+node_modules/
+
+# ⚙️ Environment files (biến môi trường)
+.env
+*/.env
+
+# 🐳 Docker files local logs
+*.log
+docker-compose.override.yml
+
+# 🧰 VSCode
+.vscode/
+*.code-workspace
+
+# 🧹 System files
+.DS_Store
+Thumbs.db
+
+# 🧪 Build outputs
+dist/
+build/
+coverage/
+
+# ⚡ Temporary files
+*.tmp
+*.bak
+*.swp
+
+# ⛔ Sensitive keys or credentials
+*.pem
+*.key
