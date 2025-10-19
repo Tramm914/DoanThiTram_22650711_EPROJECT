@@ -12,7 +12,7 @@ RUN npm install
 COPY . .
 
 # Expose port tương ứng (sẽ lấy từ .env)
-EXPOSE 3001
+EXPOSE ${PORT}
 
 # Lệnh chạy app
 CMD ["npm", "start"]
