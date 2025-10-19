@@ -10,6 +10,11 @@ services:
       - "15672:15672"
     networks:
       - eproject-net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # 🍃 MongoDB
   mongo:
@@ -21,6 +26,11 @@ services:
       - mongo-data:/data/db
     networks:
       - eproject-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # 🔐 Auth Service
   auth:
@@ -31,7 +41,8 @@ services:
     env_file:
       - ./auth/.env
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     networks:
       - eproject-net
 
@@ -44,8 +55,10 @@ services:
     env_file:
       - ./product/.env
     depends_on:
-      - mongo
-      - rabbitmq
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - eproject-net
 
@@ -58,8 +71,12 @@ services:
     env_file:
       - ./order/.env
     depends_on:
-      - mongo
-      - rabbitmq
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      product:
+        condition: service_started
     networks:
       - eproject-net
 
@@ -72,9 +89,12 @@ services:
     env_file:
       - ./api-gateway/.env
     depends_on:
-      - auth
-      - product
-      - order
+      auth:
+        condition: service_started
+      product:
+        condition: service_started
+      order:
+        condition: service_started
     networks:
       - eproject-net
 
