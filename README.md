@@ -1,7 +1,7 @@
 Dự án Eproject-phase-1 sử dụng **kiến trúc microservices**.  
 Mỗi dịch vụ được đóng gói trong **Docker container riêng biệt**, giao tiếp với nhau qua **RabbitMQ** và lưu trữ dữ liệu trong **MongoDB**.
 1. Sau khi build dự án lên docker thì chạy dự án bằng lệnh docker-compose up -d -> các container được khởi chạy
-![Docker](public/docker.png)
+![Docker](public/container_docker.png)
 
 - Rabbit được khởi chảy với url: http://localhost:15672/#/
 ![Rabbit](public/connect_rabbit.png)
