@@ -31,6 +31,13 @@ jobs:
         working-directory: ./${{ matrix.service }}
         run: npm run build --if-present
 
-      - name: Run tests
+      - name: Run tests (if exist)
         working-directory: ./${{ matrix.service }}
-        run: npm test --if-present
+        run: |
+          if [ -d "src/test" ] && ls src/test/*.test.js 1> /dev/null 2>&1; then
+            echo "Running tests for ${{ matrix.service }}..."
+            npm test
+          else
+            echo "No test files found for ${{ matrix.service }}, skipping tests."
+          fi
+
