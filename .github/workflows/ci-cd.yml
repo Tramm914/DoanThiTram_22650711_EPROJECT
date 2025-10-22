@@ -1,4 +1,4 @@
-name: CI - Microservices Build & Test
+name: CI - Integration Test Full Microservices
 
 on:
   push:
@@ -7,74 +7,53 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
+  integration-test:
     runs-on: ubuntu-latest
 
-    # Dựng MongoDB và RabbitMQ
     services:
       mongo:
         image: mongo:latest
         ports:
           - 27017:27017
-        options: >-
-          --health-cmd "mongosh --eval 'db.adminCommand({ ping: 1 })'" 
-          --health-interval 10s 
-          --health-timeout 5s 
-          --health-retries 5
 
       rabbitmq:
         image: rabbitmq:3-management
         ports:
           - 5672:5672
           - 15672:15672
-        options: >-
-          --health-cmd "rabbitmq-diagnostics -q ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    strategy:
-      matrix:
-        service: [ "auth", "product", "order", "api-gateway" ]
 
     steps:
-      # 🧱 1. Checkout code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # ⚙️ 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: "npm"
+          cache: 'npm'
 
-      # 📦 3. Install dependencies
+      # Cài dependencies cho tất cả service
       - name: Install dependencies
-        working-directory: ./${{ matrix.service }}
-        run: npm install
-
-      # 🏗️ 4. Build (nếu có)
-      - name: Build app
-        working-directory: ./${{ matrix.service }}
-        run: npm run build --if-present
-
-      # 🔐 5. Setup môi trường test
-      - name: Setup environment
-        working-directory: ./${{ matrix.service }}
         run: |
-          echo "MONGO_URI=mongodb://localhost:27017/${{ matrix.service }}_test" >> .env
-          echo "JWT_SECRET=supersecret" >> .env
-          echo "RABBITMQ_URL=amqp://localhost:5672" >> .env
-          echo "PORT=3003" >> .env
+          for dir in auth product order api-gateway; do
+            echo "Installing for $dir..."
+            cd $dir
+            npm install
+            cd ..
+          done
 
-      # 🧪 6. Run tests (nếu có)
-      - name: Run tests (if exist)
-        working-directory: ./${{ matrix.service }}
+      # Chạy tất cả service song song (background)
+      - name: Start all services
         run: |
-          if [ -d "src/test" ] && ls src/test/*.test.js 1> /dev/null 2>&1; then
-            echo "Running tests for ${{ matrix.service }}..."
-            npx mocha --timeout 20000 "src/test/**/*.test.js" --exit
-          else
-            echo "No test found for ${{ matrix.service }}, skipping..."
-          fi
+          echo "Starting all services..."
+          nohup node auth/src/app.js &
+          nohup node product/src/app.js &
+          nohup node order/src/app.js &
+          nohup node api-gateway/src/app.js &
+          sleep 10  # đợi 10s cho service khởi động
+
+      # Chạy test qua API Gateway (port 3003)
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          npx mocha --timeout 30000 test/*.test.js --exit
