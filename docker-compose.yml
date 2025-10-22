@@ -1,0 +1,109 @@
+version: "3.9"
+
+services:
+  # 🐇 RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - eproject-net
+
+  # 🍃 MongoDB
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - eproject-net
+
+  # 🔐 Auth Service
+  auth:
+    build: ./auth
+    container_name: auth
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./auth/.env
+    depends_on:
+      - mongo
+    networks:
+      - eproject-net
+    restart: always
+
+  # 🛒 Product Service
+  product:
+    build: ./product
+    container_name: product
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./product/.env
+    depends_on:
+      - mongo
+      - rabbitmq
+    networks:
+      - eproject-net
+    restart: always
+    command: >
+      sh -c "
+      echo '⏳ Waiting for RabbitMQ...';
+      sleep 10;
+      node index.js
+      "
+
+  # 📦 Order Service
+  order:
+    build: ./order
+    container_name: order
+    ports:
+      - "3002:3002"
+    env_file:
+      - ./order/.env
+    depends_on:
+      - mongo
+      - rabbitmq
+      - product
+    networks:
+      - eproject-net
+    restart: always
+    command: >
+      sh -c "
+      echo '⏳ Waiting for dependencies...';
+      sleep 12;
+      node index.js
+      "
+
+  # 🚪 API Gateway
+  api-gateway:
+    build: ./api-gateway
+    container_name: api-gateway
+    ports:
+      - "3003:3003"
+    env_file:
+      - ./api-gateway/.env
+    depends_on:
+      - auth
+      - product
+      - order
+    networks:
+      - eproject-net
+    restart: always
+    command: >
+      sh -c "
+      echo '🚀 Starting API Gateway...';
+      sleep 15;
+      node index.js
+      "
+
+volumes:
+  mongo-data:
+
+networks:
+  eproject-net:
+    driver: bridge
