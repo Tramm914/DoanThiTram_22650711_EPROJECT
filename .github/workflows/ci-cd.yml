@@ -66,7 +66,7 @@ jobs:
           echo "MONGO_URI=mongodb://localhost:27017/${{ matrix.service }}_test" >> .env
           echo "JWT_SECRET=supersecret" >> .env
           echo "RABBITMQ_URL=amqp://localhost:5672" >> .env
-          echo "PORT=3000" >> .env
+          echo "PORT=3003" >> .env
 
       # 🧪 6. Run tests (nếu có)
       - name: Run tests (if exist)
