@@ -1,17 +1,6 @@
 version: "3.9"
 
 services:
-  # 🐇 RabbitMQ
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - eproject-net
-
-  # 🍃 MongoDB
   mongo:
     image: mongo:latest
     container_name: mongo
@@ -21,8 +10,26 @@ services:
       - mongo-data:/data/db
     networks:
       - eproject-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # 🔐 Auth Service
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - eproject-net
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   auth:
     build: ./auth
     container_name: auth
@@ -31,12 +38,12 @@ services:
     env_file:
       - ./auth/.env
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
     networks:
       - eproject-net
     restart: always
 
-  # 🛒 Product Service
   product:
     build: ./product
     container_name: product
@@ -45,19 +52,14 @@ services:
     env_file:
       - ./product/.env
     depends_on:
-      - mongo
-      - rabbitmq
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - eproject-net
     restart: always
-    command: >
-      sh -c "
-      echo '⏳ Waiting for RabbitMQ...';
-      sleep 10;
-      node index.js
-      "
 
-  # 📦 Order Service
   order:
     build: ./order
     container_name: order
@@ -66,20 +68,16 @@ services:
     env_file:
       - ./order/.env
     depends_on:
-      - mongo
-      - rabbitmq
-      - product
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      product:
+        condition: service_started
     networks:
       - eproject-net
     restart: always
-    command: >
-      sh -c "
-      echo '⏳ Waiting for dependencies...';
-      sleep 12;
-      node index.js
-      "
 
-  # 🚪 API Gateway
   api-gateway:
     build: ./api-gateway
     container_name: api-gateway
@@ -88,18 +86,15 @@ services:
     env_file:
       - ./api-gateway/.env
     depends_on:
-      - auth
-      - product
-      - order
+      auth:
+        condition: service_started
+      product:
+        condition: service_started
+      order:
+        condition: service_started
     networks:
       - eproject-net
     restart: always
-    command: >
-      sh -c "
-      echo '🚀 Starting API Gateway...';
-      sleep 15;
-      node index.js
-      "
 
 volumes:
   mongo-data:
